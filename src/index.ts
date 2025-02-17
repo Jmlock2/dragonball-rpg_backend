@@ -1,15 +1,18 @@
 import express from "express";
 const app = express();
 
-import bodyParser from 'body-parser';
-const jsonParser = bodyParser.json();
+// import bodyParser from 'body-parser';
+// const jsonParser = bodyParser.json();
 
 import * as db from './db-connection';
 
 import cors from 'cors'; // Habilitar CORS
 app.use(cors());
 
-app.use(jsonParser);
+app.use(express.json()); // Habilitar el análisis de solicitudes JSON
+
+// app.use(jsonParser);
+
 
 // Endpoint GET para obtener el registro de los usuarios
 app.get('/usuarios', async (req, res) => {
@@ -67,31 +70,26 @@ app.delete('/usuarios/:id', async (req, res) => {
 });
 
 // Endpoint PUT para actualizar el rank de un usuario
-app.put('/usuarios/ranking', async (req, res) => {
-    let { email, puntos } = req.body; // Obtiene el email y puntos del cuerpo de la solicitud
+app.put('/actualizar-ranking', async (req, res) => {
+    const { email, puntos } = req.body;
+
     try {
-        let query = 'UPDATE usuarios SET ranking = ranking + $1 WHERE email = $2 RETURNING *;';
-        let db_response = await db.query(query, [puntos, email]);
-
-        if (db_response.rowCount === 0) {
-            return res.status(404).json({ error: 'Usuario no encontrado.' });
-        }
-
-        res.json({ message: 'Ranking actualizado correctamente.', usuario: db_response.rows[0] });
+        await db.query('UPDATE usuarios SET ranking = ranking + $1 WHERE email = $2;', [puntos, email]);
+        res.status(200).json({ message: 'Ranking actualizado correctamente' });
     } catch (error) {
         console.error('Error al actualizar el ranking:', error);
-        res.status(500).json({ error: 'Error al actualizar el ranking.' });
+        res.status(500).json({ error: 'Error al actualizar el ranking' });
     }
 });
 
-// Endpoint GET para obtener el ranking de los usuarios
-app.get("/usuarios/ranking", async (req, res) => {
+// Endpoint para obtener el ranking de jugadores (ordenado por puntos)
+app.get('/ranking', async (req, res) => {
     try {
-        let result = await db.query("SELECT name, ranking FROM usuarios ORDER BY ranking DESC");
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Error al obtener ranking");
+        let result = await db.query('SELECT name, ranking FROM usuarios ORDER BY ranking DESC;');
+        res.status(200).json(result.rows); // Devolver el ranking en formato JSON
+    } catch (error) {
+        console.error('Error al obtener el ranking:', error);
+        res.status(500).json({ error: 'Error al obtener el ranking' });
     }
 });
 
