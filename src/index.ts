@@ -1,18 +1,15 @@
 import express from "express";
 const app = express();
 
-// import bodyParser from 'body-parser';
-// const jsonParser = bodyParser.json();
+import bodyParser from 'body-parser';
+const jsonParser = bodyParser.json();
 
 import * as db from './db-connection';
 
 import cors from 'cors'; // Habilitar CORS
 app.use(cors());
 
-app.use(express.json()); // Habilitar el análisis de solicitudes JSON
-
-// app.use(jsonParser);
-
+app.use(jsonParser);
 
 // Endpoint GET para obtener el registro de los usuarios
 app.get('/usuarios', async (req, res) => {
@@ -72,28 +69,28 @@ app.delete('/usuarios/:id', async (req, res) => {
 // Endpoint PUT para actualizar el rank de un usuario
 app.put('/actualizar-ranking', async (req, res) => {
     const { email, puntos } = req.body;
-
+  
     try {
-        await db.query('UPDATE usuarios SET ranking = ranking + $1 WHERE email = $2;', [puntos, email]);
-        res.status(200).json({ message: 'Ranking actualizado correctamente' });
+      await db.query('UPDATE usuarios SET ranking = ranking + $1 WHERE email = $2;', [puntos, email]);
+      res.status(200).json({ message: 'Ranking actualizado correctamente' });
     } catch (error) {
-        console.error('Error al actualizar el ranking:', error);
-        res.status(500).json({ error: 'Error al actualizar el ranking' });
+      console.error('Error al actualizar el ranking:', error);
+      res.status(500).json({ error: 'Error al actualizar el ranking' });
     }
-});
+  });
 
 // Endpoint para obtener el ranking de jugadores (ordenado por puntos)
 app.get('/ranking', async (req, res) => {
     try {
-        let result = await db.query('SELECT name, ranking FROM usuarios ORDER BY ranking DESC;');
-        res.status(200).json(result.rows); // Devolver el ranking en formato JSON
+      let result = await db.query('SELECT name, ranking FROM usuarios ORDER BY ranking DESC;');
+      res.status(200).json(result.rows); // Devolver el ranking en formato JSON
     } catch (error) {
-        console.error('Error al obtener el ranking:', error);
-        res.status(500).json({ error: 'Error al obtener el ranking' });
+      console.error('Error al obtener el ranking:', error);
+      res.status(500).json({ error: 'Error al obtener el ranking' });
     }
-});
+  });
 
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 10000;
 
 app.listen(port, () => console.log(`App listening on PORT ${port}`));
