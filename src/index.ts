@@ -30,21 +30,28 @@ app.post('/register', async (req, res) => {
         let usuarioExistente = await pool.query('SELECT * FROM users WHERE auth0_id = $1', [auth0_id]);
 
         if (usuarioExistente.rows.length > 0) {
-            return res.status(200).json({ message: "Usuario ya está registrado" }); // Devuelve mensaje sin error
+            return res.status(200).json({ message: "Usuario ya está registrado" });
         }
 
-        // 2️⃣ Si no existe, lo registramos
+        // 2️⃣ Insertar usuario en la base de datos
         let nuevoUsuario = await pool.query(
-            'INSERT INTO users (auth0_id, name) VALUES ($1, $2) RETURNING *',
+            'INSERT INTO users (auth0_id, name) VALUES ($1, $2) RETURNING auth0_id, name',
             [auth0_id, name]
         );
 
-        res.status(201).json(nuevoUsuario.rows[0]); // Devolvemos el usuario creado
+        // 3️⃣ Insertar automáticamente el registro en ranking con score = 0
+        await pool.query(
+            'INSERT INTO ranking (auth0_id, name, score) VALUES ($1, $2, 0)',
+            [nuevoUsuario.rows[0].auth0_id, nuevoUsuario.rows[0].name]
+        );
+
+        res.status(201).json({ message: "Usuario y ranking creados correctamente" });
     } catch (error) {
         console.error('Error al registrar usuario:', error);
         res.status(500).json({ message: 'Error interno del servidor' });
     }
 });
+
 
 // ✅ Obtener el ranking de jugadores ordenado por puntos
 app.get('/ranking', async (req, res) => {
@@ -87,3 +94,29 @@ app.put('/ranking', async (req, res) => {
 const port = process.env.PORT || 10000;
 
 app.listen(port, () => console.log(`App listening on PORT ${port}`));
+
+
+// Antiguo ENDPOINT para registrar un nuevo usuario en la base de datos
+/* app.post('/register', async (req, res) => {
+    try {
+        let { auth0_id, name } = req.body;
+
+        // 1️⃣ Verificar si el usuario ya existe en la base de datos
+        let usuarioExistente = await pool.query('SELECT * FROM users WHERE auth0_id = $1', [auth0_id]);
+
+        if (usuarioExistente.rows.length > 0) {
+            return res.status(200).json({ message: "Usuario ya está registrado" }); // Devuelve mensaje sin error
+        }
+
+        // 2️⃣ Si no existe, lo registramos
+        let nuevoUsuario = await pool.query(
+            'INSERT INTO users (auth0_id, name) VALUES ($1, $2) RETURNING *',
+            [auth0_id, name]
+        );
+
+        res.status(201).json(nuevoUsuario.rows[0]); // Devolvemos el usuario creado
+    } catch (error) {
+        console.error('Error al registrar usuario:', error);
+        res.status(500).json({ message: 'Error interno del servidor' });
+    }
+}); */
