@@ -15,7 +15,7 @@ app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
-  }));
+}));
 
 app.use(jsonParser);
 
@@ -46,54 +46,43 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// ✅ Obtener el ranking (ordenado de mayor a menor)
+// ✅ Obtener el ranking de jugadores ordenado por puntos
 app.get('/ranking', async (req, res) => {
     try {
-        let result = await pool.query(
-            "SELECT name, score FROM ranking ORDER BY score DESC LIMIT 10"
-        );
+        let result = await pool.query('SELECT name, score FROM ranking ORDER BY score DESC LIMIT 10');
         res.json(result.rows);
     } catch (error) {
-        console.error("Error obteniendo el ranking:", error);
-        res.status(500).json({ error: "Error al obtener el ranking" });
+        console.error('Error al obtener el ranking:', error);
+        res.status(500).json({ message: 'Error al obtener el ranking' });
     }
-});
+})
 
+// ✅ Actualizar el puntaje de un jugador
+app.put('/ranking', async (req, res) => {
+    let { auth0_id, name, score } = req.body;
 
-// ✅ Registrar puntaje (si no existe, lo crea)
-app.post("/ranking", async (req, res) => {
-    const { auth0_id, name, score } = req.body;
+    if (!auth0_id || !name || score === undefined) {
+        return res.status(400).json({ error: 'Faltan datos en la petición' });
+    }
 
     try {
-        // Comprobar si el usuario ya tiene un registro en el ranking
-        let existingUser = await pool.query(
-            "SELECT * FROM ranking WHERE auth0_id = $1",
-            [auth0_id]
-        );
+        // Verificamos si el usuario ya está en el ranking
+        const checkUser = await pool.query('SELECT * FROM ranking WHERE auth0_id = $1', [auth0_id]);
 
-        if (existingUser.rows.length > 0) {
-            // Si ya existe, actualizar el puntaje solo si es mayor al anterior
-            await pool.query(
-                "UPDATE ranking SET score = GREATEST(score, $1) WHERE auth0_id = $2",
-                [score, auth0_id]
-            );
-            return res.json({ message: "Puntaje actualizado" });
+        if (checkUser.rows.length > 0) {
+            // Si ya existe, actualizamos su score (suma el nuevo puntaje al actual)
+            await pool.query('UPDATE ranking SET score = score + $1 WHERE auth0_id = $2', [score, auth0_id]);
+        } else {
+            // Si no existe, lo insertamos
+            await pool.query('INSERT INTO ranking (auth0_id, name, score) VALUES ($1, $2, $3)', [auth0_id, name, score]);
         }
 
-        // Si no existe, crear un nuevo registro
-        await pool.query(
-            "INSERT INTO ranking (auth0_id, name, score) VALUES ($1, $2, $3)",
-            [auth0_id, name, score]
-        );
-
-        res.json({ message: "Puntaje registrado" });
+        res.json({ message: 'Ranking actualizado correctamente' });
     } catch (error) {
-        console.error("Error registrando puntaje:", error);
-        res.status(500).json({ error: "Error al registrar puntaje" });
+        console.error('Error al actualizar el ranking:', error);
+        res.status(500).json({ error: 'Error al actualizar el ranking' });
     }
 });
-
-
 
 const port = process.env.PORT || 10000;
 
